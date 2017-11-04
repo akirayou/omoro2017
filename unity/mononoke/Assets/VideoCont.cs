@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Video;
 using System.IO;
+using System.IO.Ports;
 
 
 class MononokeInfo
@@ -68,19 +69,22 @@ class HitCount
     bool inDown = false;
     bool isEdge = false;
     public int hitId = -1;
+    public VideoCont videoCont;
+
     public void Poll()
     {
         if (inDown)
         {
             time += Time.deltaTime;
         }
+        int k = videoCont.GetKey();
         isEdge = false;
-        if (Input.GetKeyUp(KeyCode.Return))
+        if (Input.GetKeyUp(KeyCode.Return) || k=='U')
         {
             isEdge = true;
             inDown = false;
         }
-        if (Input.GetKeyDown(KeyCode.Return))
+        if (Input.GetKeyDown(KeyCode.Return) || k=='D')
         {
 
             isEdge = true;
@@ -110,9 +114,30 @@ public class VideoCont : MonoBehaviour {
     private UnityEngine.UI.Slider level;
     MononokeData mononokeData = new MononokeData();
 
+    public string portName = "COM4";
+    public int baudRate = 9600;
+    private SerialPort serialPort_;
+
     Vector3 originalPos =new Vector3();
+    HitCount hitCount = new HitCount();
+    public int GetKey()
+    {
+        try
+        {
+            return serialPort_.ReadByte();
+        }
+        catch (System.Exception)
+        {
+            return -1;
+        }
+    }
     // Use this for initialization
     void Start () {
+        serialPort_ = new SerialPort(portName, baudRate);
+        serialPort_.Open();
+        serialPort_.ReadTimeout = 1;
+        hitCount.videoCont=this;
+
         vacuumSound = GameObject.Find("Vacuum").GetComponent<AudioSource>();
         vacuumSound.Pause();
         cancelSound = GameObject.Find("Cancel").GetComponent<AudioSource>();
@@ -132,12 +157,22 @@ public class VideoCont : MonoBehaviour {
         video.Pause();
     }
 
-
-
+    void air()
+    {
+        try
+        {
+            serialPort_.Write("l");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning(e.Message);
+        }
+    }
+  
 
     private void Control()
     {
-
+        
         if (Input.GetKeyDown(KeyCode.Space))
         {
             if (video.isPlaying)
@@ -194,12 +229,11 @@ public class VideoCont : MonoBehaviour {
     }
     void mononokeShake(float time)
     {
-        float z = 10f - 0.2f * time;
-        if (z < 1) z = 1;
-        //originalPos.z = z;
+        float z = 2.0f - 1.0f * time;
+        if (z < -0.1f) z = -0.1f;
+        originalPos.z = z;
         mononoke.transform.position = originalPos + new Vector3(Random.Range(-0.1f, 0.1f), Random.Range(-0.1f, 0.1f), Random.Range(-0.1f, 0.1f));
     }
-    HitCount hitCount = new HitCount();
     // Update is called once per frame
     void Update() {
         Control();
@@ -251,6 +285,7 @@ public class VideoCont : MonoBehaviour {
                 Debug.Log("SUCESS TO GET");
                 ///TODO:caputure effect
                 hitCount.hitId = -1;
+                air();
                 mononokeOff();
             }
             if (hitCount.IsRiseEdge())//CANCEL
