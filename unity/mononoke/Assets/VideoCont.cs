@@ -113,13 +113,52 @@ public class VideoCont : MonoBehaviour {
     private AudioSource cancelSound;
     private UnityEngine.UI.Slider level;
     MononokeData mononokeData = new MononokeData();
-
+    private float captureLen = 3.5f;
     public string portName = "COM4";
     public int baudRate = 9600;
     private SerialPort serialPort_;
+    private const int nofLed = 100;
+    byte[] ledData = new byte[nofLed * 3+1];
 
     Vector3 originalPos =new Vector3();
     HitCount hitCount = new HitCount();
+    void SendLed()
+    {
+        ledData[0] = (byte)'L';
+        serialPort_.Write(ledData,0,nofLed*3+1);
+    }
+    void SetLed(int pos,byte r,byte g,byte b)
+    {
+        ledData[pos * 3 + 1] = r;
+        ledData[pos * 3 + 2] = g;
+        ledData[pos * 3 + 3] = b;
+    }
+    enum LedState { OFF,WAVE};
+    LedState ledState = LedState.OFF;
+    int ledCount = 0;
+    void KickLed()
+    {
+        ledCount++;
+        if (ledState == LedState.OFF)
+        {
+            for (int i = 0; i < nofLed; i++) SetLed(i, 0, 0, 0);
+
+        }
+        if (ledState == LedState.WAVE)
+        {
+
+            for (int i = 0; i < nofLed; i++) { 
+                 SetLed(i, 
+                        (byte)(((ledCount+i)%13 == 0) ? 255 : 0), 
+                        (byte)(((ledCount+i)%15 == 0  )? 255:0    ), 
+                        (byte)(((ledCount+i)%17 == 0) ? 255 : 0));
+                }
+        }
+        SendLed();
+
+    }
+
+
     public int GetKey()
     {
         try
@@ -161,7 +200,7 @@ public class VideoCont : MonoBehaviour {
     {
         try
         {
-            serialPort_.Write("l");
+            serialPort_.Write("o");
         }
         catch (System.Exception e)
         {
@@ -191,6 +230,7 @@ public class VideoCont : MonoBehaviour {
 
 
         long delta = 0;
+        if (Input.GetKeyDown(KeyCode.R)) {delta -= video.frame; }
         if (Input.GetKeyDown(KeyCode.RightArrow)) delta += 20;
         if (Input.GetKeyDown(KeyCode.LeftArrow)) delta -= 20;
         if (Input.GetKeyDown(KeyCode.UpArrow)) delta += 1;
@@ -218,6 +258,7 @@ public class VideoCont : MonoBehaviour {
         mononoke.transform.localScale = scale;
         level.value = minfo.level;
         mononoke.SetActive(true);
+        ledState = LedState.WAVE;
         vacuumSound.Play();
 
     }
@@ -225,11 +266,11 @@ public class VideoCont : MonoBehaviour {
     {
         mononoke.SetActive(false);
         vacuumSound.Stop();
-
+        ledState = LedState.OFF;
     }
     void mononokeShake(float time)
     {
-        float z = 2.0f - 1.0f * time;
+        float z = 2.0f - 3.0f/captureLen * time;
         if (z < -0.1f) z = -0.1f;
         originalPos.z = z;
         mononoke.transform.position = originalPos + new Vector3(Random.Range(-0.1f, 0.1f), Random.Range(-0.1f, 0.1f), Random.Range(-0.1f, 0.1f));
@@ -238,7 +279,7 @@ public class VideoCont : MonoBehaviour {
     void Update() {
         Control();
         hitCount.Poll();
-
+        KickLed();
         if (mononokeId < 0)//No valid mononoke in this time
         {
             int m = mononokeData.FindStart((int)video.frame);//Here is New Mononoke
@@ -280,7 +321,7 @@ public class VideoCont : MonoBehaviour {
         if (0 <= hitCount.hitId)//Mononoke is being capturerd (do Shake ) 
         {
             mononokeShake(hitCount.time);
-            if (hitCount.time > 3)//CAPTURED
+            if (hitCount.time > captureLen)//CAPTURED
             {
                 Debug.Log("SUCESS TO GET");
                 ///TODO:caputure effect

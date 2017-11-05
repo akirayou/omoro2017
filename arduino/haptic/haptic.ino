@@ -69,8 +69,8 @@ void loop() {
 
   // put your main code here, to run repeatedly:
   if(Serial.available()){
-    int key=Serial.read();
     if(ledReadCount == NOF_LED*3){
+      int key=Serial.read();
       if('a'<=key&& key<='z')startVive(key-'a');
       if('L'==key)ledReadCount=0;
     }else{
