@@ -124,6 +124,8 @@ public class VideoCont : MonoBehaviour {
     HitCount hitCount = new HitCount();
     void SendLed()
     {
+        if (serialPort_ == null) return;
+
         ledData[0] = (byte)'L';
         serialPort_.Write(ledData,0,nofLed*3+1);
     }
@@ -161,6 +163,8 @@ public class VideoCont : MonoBehaviour {
 
     public int GetKey()
     {
+        if (serialPort_ == null) return -1;
+
         try
         {
             return serialPort_.ReadByte();
@@ -172,9 +176,15 @@ public class VideoCont : MonoBehaviour {
     }
     // Use this for initialization
     void Start () {
-        serialPort_ = new SerialPort(portName, baudRate);
-        serialPort_.Open();
-        serialPort_.ReadTimeout = 1;
+        try
+        {
+            serialPort_ = new SerialPort(portName, baudRate);
+            serialPort_.Open();
+            serialPort_.ReadTimeout = 1;
+        }catch(System.Exception e)
+        {
+            serialPort_ = null;
+        }
         hitCount.videoCont=this;
 
         vacuumSound = GameObject.Find("Vacuum").GetComponent<AudioSource>();
@@ -198,6 +208,7 @@ public class VideoCont : MonoBehaviour {
 
     void air()
     {
+        if (serialPort_ == null) return;
         try
         {
             serialPort_.Write("o");
