@@ -108,7 +108,7 @@ public class VideoCont : MonoBehaviour {
     public VideoPlayer video;
     public UnityEngine.UI.Text text;
     private GameObject mononoke;
-    private GameObject target;
+    private GameObject target,center;
     private AudioSource vacuumSound;
     private AudioSource cancelSound;
     private UnityEngine.UI.Slider level;
@@ -119,7 +119,7 @@ public class VideoCont : MonoBehaviour {
     private SerialPort serialPort_;
     private const int nofLed = 100;
     byte[] ledData = new byte[nofLed * 3+1];
-
+    Texture2D[] centerImg = new Texture2D[3];
     Vector3 originalPos =new Vector3();
     HitCount hitCount = new HitCount();
     void SendLed()
@@ -196,6 +196,13 @@ public class VideoCont : MonoBehaviour {
         level = GameObject.Find("Level").GetComponent<UnityEngine.UI.Slider>();
         target = GameObject.Find("Target");
         target.SetActive(false);
+        center = GameObject.Find("Center");
+        center.SetActive(false);
+        centerImg[0] = Resources.Load<Texture2D>("s");
+        centerImg[1] = Resources.Load<Texture2D>("m");
+        centerImg[2] = Resources.Load<Texture2D>("l");
+
+
         mononoke = GameObject.Find("Mononoke");
         mononoke.SetActive(false);
         originalPos=mononoke.transform.position;
@@ -262,6 +269,7 @@ public class VideoCont : MonoBehaviour {
     private void mononokeOn()
     {
         MononokeInfo minfo = mononokeData.GetInfo(mononokeId);
+        captureLen = minfo.level * 3.5f / 3;
         float aspect = (float)minfo.tex.width / minfo.tex.height;
         mononoke.GetComponent<Renderer>().material.mainTexture = minfo.tex;
         Vector3 scale = mononoke.transform.localScale;
@@ -299,12 +307,19 @@ public class VideoCont : MonoBehaviour {
                 mononokeId = m;
                 //show mononoke In target indicator
                 MononokeInfo minfo = mononokeData.GetInfo(mononokeId);
+                if (minfo == null)
+                {
+                    Debug.LogError("No Data at " + minfo.name);
+                }
                 float aspect = (float)minfo.tex.width / minfo.tex.height;
                 target.GetComponent<UnityEngine.UI.Image>().material.mainTexture = minfo.tex;
+                center.GetComponent<UnityEngine.UI.Image>().material.mainTexture = centerImg[minfo.level - 1];
+                Debug.Log("LEVEL======" + minfo.level);
                 Vector3 scale = target.transform.localScale;
                 scale.x = scale.y * aspect;
                 target.transform.localScale = scale;
                 target.SetActive(true);
+                center.SetActive(true);
             }
         }
         else
@@ -312,6 +327,7 @@ public class VideoCont : MonoBehaviour {
             if (mononokeData.IsEnd(mononokeId, (int)video.frame)) //Now disappering 
             {
                 target.SetActive(false);
+                center.SetActive(false);
                 level.value = 0;
                 mononokeId = -1;
             }
