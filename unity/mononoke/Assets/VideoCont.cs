@@ -107,6 +107,7 @@ class HitCount
 public class VideoCont : MonoBehaviour {
     public VideoPlayer video;
     public UnityEngine.UI.Text text;
+    public UnityEngine.UI.Text BigText;
     private GameObject mononoke;
     private GameObject target,center;
     private AudioSource vacuumSound;
@@ -118,6 +119,8 @@ public class VideoCont : MonoBehaviour {
     public int baudRate = 9600;
     private SerialPort serialPort_;
     private const int nofLed = 100;
+    private bool levelShow=false;
+    private int[] scoreCount = new int[3];
     byte[] ledData = new byte[nofLed * 3+1];
     Texture2D[] centerImg = new Texture2D[3];
     Vector3 originalPos =new Vector3();
@@ -197,7 +200,7 @@ public class VideoCont : MonoBehaviour {
         target = GameObject.Find("Target");
         target.SetActive(false);
         center = GameObject.Find("Center");
-        center.SetActive(false);
+        levelShow = false;
         centerImg[0] = Resources.Load<Texture2D>("s");
         centerImg[1] = Resources.Load<Texture2D>("m");
         centerImg[2] = Resources.Load<Texture2D>("l");
@@ -249,8 +252,8 @@ public class VideoCont : MonoBehaviour {
 
         long delta = 0;
         if (Input.GetKeyDown(KeyCode.R)) {delta -= video.frame; }
-        if (Input.GetKeyDown(KeyCode.RightArrow)) delta += 20;
-        if (Input.GetKeyDown(KeyCode.LeftArrow)) delta -= 20;
+        if (Input.GetKeyDown(KeyCode.RightArrow)) delta += 100;
+        if (Input.GetKeyDown(KeyCode.LeftArrow)) delta -= 100;
         if (Input.GetKeyDown(KeyCode.UpArrow)) delta += 1;
         if (Input.GetKeyDown(KeyCode.DownArrow)) delta -= 1;
 
@@ -263,7 +266,7 @@ public class VideoCont : MonoBehaviour {
             video.frame = frame;
         }
 
-        text.text = video.frame.ToString() + "/" + video.frameCount.ToString();
+        
     }
     int mononokeId = -1;
     private void mononokeOn()
@@ -272,7 +275,7 @@ public class VideoCont : MonoBehaviour {
         captureLen = minfo.level * 3.5f / 3;
         float aspect = (float)minfo.tex.width / minfo.tex.height;
         mononoke.GetComponent<Renderer>().material.mainTexture = minfo.tex;
-        Vector3 scale = mononoke.transform.localScale;
+        Vector3 scale = new Vector3(0.1f,0.1f,0.1f);
         scale.x = scale.y * aspect;
         mononoke.transform.localScale = scale;
         level.value = minfo.level;
@@ -294,8 +297,36 @@ public class VideoCont : MonoBehaviour {
         originalPos.z = z;
         mononoke.transform.position = originalPos + new Vector3(Random.Range(-0.1f, 0.1f), Random.Range(-0.1f, 0.1f), Random.Range(-0.1f, 0.1f));
     }
+    int totalScore()
+    {
+        return scoreCount[2] * 30 + scoreCount[1] * 20 + scoreCount[0] * 10;
+    }
+    void setScore()
+    {
+        text.text = "大" + scoreCount[2].ToString() + " " +
+                    "中" + scoreCount[1].ToString() + " " +
+                    "小" + scoreCount[0].ToString() + " " +
+                    "点数" + totalScore().ToString();
+    }
+    void setBigScore(bool show)
+    {
+        if (!show)
+        {
+            BigText.text = "";
+            return;
+        }
+        BigText.text = "大　　" + scoreCount[2].ToString() + "\n" +
+                    "中　　" + scoreCount[1].ToString() + "\n" +
+                    "小　　" + scoreCount[0].ToString() + "\n" +
+                    "点数　" + totalScore().ToString();
+    }
+
+
     // Update is called once per frame
     void Update() {
+        setBigScore(video.frame > 2428);
+        setScore();
+        //text.text = video.frame.ToString() + "/" + video.frameCount.ToString();
         Control();
         hitCount.Poll();
         KickLed();
@@ -319,7 +350,9 @@ public class VideoCont : MonoBehaviour {
                 scale.x = scale.y * aspect;
                 target.transform.localScale = scale;
                 target.SetActive(true);
-                center.SetActive(true);
+                levelShow = true;
+
+                
             }
         }
         else
@@ -327,7 +360,7 @@ public class VideoCont : MonoBehaviour {
             if (mononokeData.IsEnd(mononokeId, (int)video.frame)) //Now disappering 
             {
                 target.SetActive(false);
-                center.SetActive(false);
+                levelShow = false;
                 level.value = 0;
                 mononokeId = -1;
             }
@@ -351,6 +384,8 @@ public class VideoCont : MonoBehaviour {
             if (hitCount.time > captureLen)//CAPTURED
             {
                 Debug.Log("SUCESS TO GET");
+                int level=mononokeData.GetInfo(hitCount.hitId).level;
+                scoreCount[level-1]++;
                 ///TODO:caputure effect
                 hitCount.hitId = -1;
                 air();
@@ -365,7 +400,7 @@ public class VideoCont : MonoBehaviour {
             }
         }
 
-
+        center.SetActive(levelShow && (!mononoke.active));
 
 
     }
