@@ -70,7 +70,9 @@ class HitCount
     bool isEdge = false;
     public int hitId = -1;
     public VideoCont videoCont;
-
+    public bool InDown{
+        get{ return inDown; }
+    }
     public void Poll()
     {
         if (inDown)
@@ -324,11 +326,17 @@ public class VideoCont : MonoBehaviour {
 
     // Update is called once per frame
     void Update() {
-        setBigScore(video.frame > 2428);
+        int scoreFrame = 2428;
+        hitCount.Poll();
+        setBigScore(video.frame > scoreFrame);
+        if (hitCount.InDown && video.frame < scoreFrame  && hitCount.hitId==-1)
+        {
+            BigText.text = "\n\n\n\nかまえろ！";
+
+        }
         setScore();
         //text.text = video.frame.ToString() + "/" + video.frameCount.ToString();
         Control();
-        hitCount.Poll();
         KickLed();
         if (mononokeId < 0)//No valid mononoke in this time
         {
